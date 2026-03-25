@@ -10,6 +10,7 @@ import os
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 from pyvi import ViTokenizer
+from gensim.models import Word2Vec
 
 st.set_page_config(page_title="Hệ thống lọc Spam Tiếng Việt", page_icon="🛡️", layout="wide")
 
@@ -26,11 +27,29 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 STOPWORDS_PATH = os.path.join(BASE_DIR, "vietnamese-stopwords.txt")
 
 SAMPLES = {
+    # ================= 🔴 10 MẪU SPAM (TỪ DỄ ĐẾN KHÓ) =================
     "🔴 Spam 1 (Bán hàng)": "Call: 0869758899 E thanh li'' 0822496000 còn 499k.Ba'n Them 0858999221 dong gia 499k",
     "🔴 Spam 2 (Lừa đảo/Cho vay)": "Vay vốn ngân hàng KHÔNG CẦN THẾ CHẤP, giải ngân trong 30p. LH ngay 0988xxxxxx",
+    "🔴 Spam 3 (Giả danh người quen)": "Hoàng ơi, t đổi số rồi nhé. M lưu số này nha, số kia t bỏ. Chiều mượn tạm 500k đóng tiền trọ mai gửi lại được k?",
+    "🔴 Spam 4 (Tuyển dụng trá hình)": "Dạ chào anh/chị, em là Thủy bên NS công ty TNHH Vạn Phát. Thấy CV của mình phù hợp, bên em mời anh/chị làm CTV online tại nhà, ngày làm 2 tiếng nhận lương ngày. IB zalo em nhé.",
+    "🔴 Spam 5 (Giả mạo giao hàng)": "Shipper J&T: Don hang 89123 cua ban giao khong thanh cong do thieu thong tin. Vui long bo sung tai: htps://jnt-vn.com de nhan hang.",
+    "🔴 Spam 6 (Lừa đảo chuyển nhầm)": "Cháu ơi cô chuyển nhầm 2 triệu vào tài khoản cháu lúc nãy. Cháu kiểm tra rồi chuyển lại giúp cô vào stk 0123456789 ngân hàng MB nhé. Cô cảm ơn cháu.",
+    "🔴 Spam 7 (Mạo danh Cơ quan nhà nước)": "Cuc Thue VN: Canh bao nop phat cham thue TNCN nam 2025. Chi tiet tai ung dung eTax hoac truy cap thuevietnam-gov.com. Bo qua tin nhan neu da nop.",
+    "🔴 Spam 8 (Đầu tư tài chính/Coin)": "Chuc mung ban dc chon tham gia room VIP ho tro chung khoan thuc chien. Loi nhuan 30%/thang. Add Zalo Truong phong: 0912xxxxxx de vao nhom.",
+    "🔴 Spam 9 (Trúng thưởng nền tảng)": "Shoppee: Tai khoan cua ban nhan duoc 1 phan qua tri an tri gia 3.000.000 VND. Click vao link :https://www.youtube.com/watch?v=6Hv80f1-9UQde xac nhan thong tin nhan thuong.",
+    "🔴 Spam 10 (Gia hạn dịch vụ giả)": "Cảnh báo: Tên miền của bạn sẽ hết hạn trong 24h tới. Vui lòng thanh toán phí duy trì 550k vào STK 123456789 (Nguyen Van A) để tránh gián đoạn dịch vụ.",
+
+    # ================= 🟢 10 MẪU HAM (TÌNH HUỐNG THỰC TẾ/GÂY NHIỄU) =================
     "🟢 Ham 1 (Bóc phốt)": "toi viết những dòng này sau khi bị nhóm intro to ai này scam 500k, cụ thể họ đã bắt tôi trả tiền...",
     "🟢 Ham 2 (Chê dịch vụ)": "phí dịch vụ cao nhất , chuyển tiền nội mạng trừ phí tởm nhất , thái độ làm việc bố láo nhất",
     "🟢 Ham 3 (Đời thường)": "Chuyến e đi Ninh Bình với ny có 2 triệu thôi =))",
+    "🟢 Ham 4 (Nhắc chuyển khoản)": "Ê t vừa chuyển khoản 2 củ tiền vé máy bay rồi nha. Check app ngân hàng xem nhận được chưa, không thấy báo tao để tao gọi tổng đài.",
+    "🟢 Ham 5 (Share link săn sale)": "Mày lên Shopee săn ngay cái voucher freeship 50k đi, đang sale kìa. Link tao gửi trong Zalo rồi đấy, lẹ lên không hết mã.",
+    "🟢 Ham 6 (Việc khẩn cấp/Có SĐT)": "Alo gọi khẩn cấp cho thầy Tuấn số 0988123456 nhé, thầy đang chờ duyệt tài liệu đồ án ở cổng trường đấy, nhanh lên!",
+    "🟢 Ham 7 (Học tập - NLP)": "Ê chiều nay báo cáo bài tập NLP nhóm mình review lại phần TF-IDF với Word2Vec tí nhé. T sợ thầy hỏi xoáy phần code phân loại text đấy.",
+    "🟢 Ham 8 (Giải trí - Bóng đá/Game)": "Hôm qua xem trận Arsenal đá hay thực sự. Cuối tuần này rảnh làm vài ván eFootball không? T mới build lại đội hình ngon lắm.",
+    "🟢 Ham 9 (Đồ án - Xử lý ảnh)": "File slide báo cáo xử lý ảnh phần nhận diện QR code t gửi qua drive rồi đấy. Mày check xem điều kiện ánh sáng lúc demo trên lớp ổn không nha.",
+    "🟢 Ham 10 (Code - Front-end)": "Phần front-end cái app quản lý kho sữa hạt tao đang vướng logic xuất nhập trước sau (FEFO). Mai lên lớp xem hộ tao cái luồng MVC một chút nhé."
 }
 
 # ── 2. TẢI MODEL & TÀI NGUYÊN ─────────────────────────────────
@@ -44,13 +63,22 @@ def load_system():
     manual_cols  = pickle.load(open(os.path.join(OUTPUT_DIR, "manual_cols.pkl"), "rb"))
     spam_lexicon = pickle.load(open(os.path.join(OUTPUT_DIR, "spam_lexicon.pkl"), "rb"))
     
+    # Nạp thêm Word2Vec
+    try:
+        from gensim.models import Word2Vec
+        w2v_model  = Word2Vec.load(os.path.join(OUTPUT_DIR, "word2vec.model"))
+        w2v_scaler = pickle.load(open(os.path.join(OUTPUT_DIR, "w2v_scaler.pkl"), "rb"))
+    except:
+        w2v_model, w2v_scaler = None, None
+        
     if os.path.exists(STOPWORDS_PATH):
         with open(STOPWORDS_PATH, 'r', encoding='utf-8') as f:
             stopwords = set([line.strip() for line in f if line.strip()])
     else:
         stopwords = set(["bị", "bởi", "các", "cái", "cho", "có", "của", "đã", "đang", "để", "do", "là", "thì", "mà", "những", "trong", "và", "vào", "với"])
         
-    return tfidf_word, tfidf_char, scaler, le, best_t, manual_cols, spam_lexicon, stopwords
+    # Đảm bảo return đúng 10 biến
+    return tfidf_word, tfidf_char, scaler, le, best_t, manual_cols, spam_lexicon, stopwords, w2v_model, w2v_scaler
 
 @st.cache_resource(show_spinner="Đang nạp Mô hình Học máy...")
 def load_ml_model(model_filename):
@@ -63,11 +91,14 @@ def load_results():
         return pd.read_csv(csv_path)
     return None
 
+# Đảm bảo hứng đúng 10 biến ở đây
 try:
-    tfidf_word, tfidf_char, scaler, le, best_t_loaded, manual_cols, spam_lexicon, VN_STOPWORDS = load_system()
+    tfidf_word, tfidf_char, scaler, le, best_t_loaded, manual_cols, spam_lexicon, VN_STOPWORDS, w2v_model, w2v_scaler = load_system()
 except Exception as e:
     st.error(f"❌ Vui lòng chạy file Bước 4 trước. Lỗi: {e}")
     st.stop()
+
+
 
 # ── 3. XỬ LÝ NGÔN NGỮ (NLP) ───────────────────────────────────
 VN_TEENCODE = {
@@ -80,12 +111,26 @@ _PAT_URL = re.compile(r"http[s]?://|www\.|[a-z0-9\-]+\.(vn|com\.vn|com|net|org)/
 _PAT_MONEY = re.compile(r"vnđ|vnd|đồng|usd|\b\d+\s*(k|tr|triệu|tỷ|củ|lít)\b|chuyển\s+khoản|số\s+dư", re.I)
 _PAT_FREE = re.compile(r"miễn\s+phí|trúng\s+thưởng|khuyến\s+mãi|quà\s+tặng|voucher|sale|vay\s+vốn|lãi\s+suất|giải\s+ngân|cờ\s+bạc|tài\s+xỉu", re.I)
 
+# Thay thế hoàn toàn hàm preprocess_vn cũ bằng đoạn này
+VN_SLANG = {
+    r"\bko\b": "không", r"\bkh\b": "không", r"\bkhg\b": "không", r"\bkg\b": "không", r"\bk\b": "không",
+    r"\bdc\b": "được", r"\bđc\b": "được", r"\bvs\b": "với", r"\bcx\b": "cũng", r"\bj\b": "gì",
+    r"\bnt\b": "nhắn tin", r"\bđt\b": "điện thoại", r"\bdt\b": "điện thoại", r"\bib\b": "nhắn tin",
+    r"\bsđt\b": "số điện thoại", r"\bsdt\b": "số điện thoại", r"\bqc\b": "quảng cáo", r"\bkm\b": "khuyến mãi",
+    r"\bck\b": "chuyển khoản", r"\btk\b": "tài khoản", r"\bstk\b": "số tài khoản", r"\bsp\b": "sản phẩm",
+    r"\bh\b": "giờ", r"\bthk\b": "cảm ơn", r"\bntn\b": "như thế nào",
+    r"\bhnay\b": "hôm nay", r"\bmai\b": "ngày mai", r"\bvcl\b": "vãi", r"\bvl\b": "vãi"
+}
+
 def preprocess_vn(text):
     text = text.lower()
-    for p, r in VN_TEENCODE.items(): text = re.sub(p, r, text)
+    for p, r in VN_SLANG.items(): text = re.sub(p, r, text)
     text = re.sub(r"http\S+|www\S+", " url ", text)
-    text = re.sub(_PAT_PHONE, " phonenumber ", text)
-    text = re.sub(r"[^a-zàáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ\s]", " ", text)
+    text = re.sub(r"\b(0[3|5|7|8|9])+([0-9]{8})\b", " phonenumber ", text)
+    
+    vn_chars = "a-záàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ"
+    text = re.sub(f"[^{vn_chars}_\\s]", " ", text)
+    
     text = ViTokenizer.tokenize(text) 
     tokens = [t for t in text.split() if t not in VN_STOPWORDS and len(t) > 1]
     return " ".join(tokens)
@@ -115,7 +160,19 @@ def predict(text, threshold, clf_model):
     X_word = tfidf_word.transform([clean])
     X_char = tfidf_char.transform([clean])
     X_man  = scaler.transform(compute_manual_features(text, clean))
-    X_comb = sp.hstack([X_word, X_char, sp.csr_matrix(X_man)])
+    
+    # Xử lý Word2Vec
+    if w2v_model and w2v_scaler:
+        tokens = clean.split()
+        vecs = [w2v_model.wv[w] for w in tokens if w in w2v_model.wv]
+        w2v_doc = np.mean(vecs, axis=0) if len(vecs) > 0 else np.zeros(100)
+        X_w2v_sp = sp.csr_matrix(w2v_scaler.transform([w2v_doc]))
+        
+        # Gộp 4 features
+        X_comb = sp.hstack([X_word, X_char, sp.csr_matrix(X_man), X_w2v_sp])
+    else:
+        # Nếu không nạp được W2V, chạy mặc định
+        X_comb = sp.hstack([X_word, X_char, sp.csr_matrix(X_man)])
     
     if hasattr(clf_model, "predict_proba"):
         prob = clf_model.predict_proba(X_comb)[0][list(le.classes_).index("spam")]
@@ -126,6 +183,7 @@ def predict(text, threshold, clf_model):
             
     lbl = "spam" if prob >= threshold else "ham"
     return lbl, float(prob), clean
+
 
 # ── 4. GIAO DIỆN (UI) ─────────────────────────────────────────
 with st.sidebar:
@@ -144,13 +202,13 @@ with st.sidebar:
     
     MODEL_NAMES = {
         "best_model.pkl": "🌟 Mô Hình Tốt Nhất (Tự động)",
-        "voting_model.pkl": "🤝 Voting Ensemble (Tổng hợp)",
-        "logistic_reg_model.pkl": "📈 Logistic Regression",
-        "logistic_regression_model.pkl": "📈 Logistic Regression",
-        "svm_calibrated_model.pkl": "⚔️ Support Vector Machine",
-        "svm_model.pkl": "⚔️ Support Vector Machine",
-        "nb_complement_model.pkl": "📐 Naive Bayes (Complement)",
-        "nb_multinomial_model.pkl": "📐 Naive Bayes (Multinomial)"
+        "voting_model.pkl": " Voting Ensemble (Tổng hợp)-VE",
+        "logistic_reg_model.pkl": " Logistic Regression-LR",
+        "logistic_regression_model.pkl": " Logistic Regression-LR",
+        "svm_calibrated_model.pkl": " Support Vector Machine-SVM",
+        "svm_model.pkl": " Support Vector Machine-SVM",
+        "nb_complement_model.pkl": " Naive Bayes (Complement)-CNB",
+        "nb_multinomial_model.pkl": " Naive Bayes (Multinomial)-MNB"
     }
         
     selected_model_file = st.selectbox(
