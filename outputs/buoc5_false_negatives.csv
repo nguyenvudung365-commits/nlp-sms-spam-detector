@@ -1,0 +1,1 @@
+﻿label,text,text_normalized,text_clean,lexicon_score,num_chars,num_words,num_sentences,has_phone,has_url,has_money,has_free,uppercase_ratio,punct_density,digit_ratio,exclamation_count,all_caps_words,avg_word_len,currency_count,y_true,y_pred,y_prob

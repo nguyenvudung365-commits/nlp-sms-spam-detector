@@ -1,0 +1,14 @@
+MODEL: LogisticRegression
+========================================
+              precision    recall  f1-score   support
+
+         Ham       0.99      0.95      0.97      1836
+        Spam       0.56      0.87      0.68       119
+
+    accuracy                           0.95      1955
+   macro avg       0.77      0.91      0.83      1955
+weighted avg       0.97      0.95      0.95      1955
+
+F2-Score (β=2.0) : 0.7843
+AUC-ROC          : 0.9784
+Ngưỡng tối ưu    : 0.36
