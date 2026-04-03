@@ -1,0 +1,13 @@
+Model: LogisticRegression
+==================================================
+Pipeline: Word TF-IDF(5271) + Char TF-IDF(4000) + Manual(13)
+Best threshold (F2): 0.24
+
+              precision    recall  f1-score   support
+
+         Ham       1.00      0.99      0.99      1105
+        Spam       0.69      1.00      0.81        24
+
+    accuracy                           0.99      1129
+   macro avg       0.84      1.00      0.90      1129
+weighted avg       0.99      0.99      0.99      1129
